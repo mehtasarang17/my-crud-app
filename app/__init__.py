@@ -21,7 +21,7 @@ def create_app():
     # init extensions
     db.init_app(app)
     swagger.init_app(app)
-    Scss(app)
+    Scss(app, static_dir='static', asset_dir='static')
 
     # register blueprints
     app.register_blueprint(ui_bp)
