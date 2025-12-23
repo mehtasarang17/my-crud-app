@@ -45,7 +45,6 @@ def create_app():
     }
 
     Swagger(app, config=swagger_config, template=swagger_template)
-    # ---------------------------------------------------
 
     # register blueprints
     app.register_blueprint(ui_bp)
