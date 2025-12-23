@@ -8,81 +8,73 @@ from ..services.csv_io import parse_tasks_csv, tasks_to_csv
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
-@api_bp.route("/tasks", methods=["GET"])
-def list_tasks():
-    q = request.args.get("q", default="", type=str).strip()
-    page = request.args.get("page", default=1, type=int)
-    per_page = request.args.get("per_page", default=5, type=int)
+@api_bp.route("/tasks", methods=["GET","POST"])
+def list_or_add_tasks():
+    if request.method == "GET":
+        q = request.args.get("q", default="", type=str).strip()
+        page = request.args.get("page", default=1, type=int)
+        per_page = request.args.get("per_page", default=5, type=int)
 
-    if page < 1:
-        page = 1
-    if per_page < 1:
-        per_page = 5
-    if per_page > 100:
-        per_page = 100
+        if page < 1:
+            page = 1
+        if per_page < 1:
+            per_page = 5
+        if per_page > 100:
+            per_page = 100
 
-    query = apply_task_search(MyTask.query, q)
-    pagination = query.order_by(MyTask.created.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+        query = apply_task_search(MyTask.query, q)
+        pagination = query.order_by(MyTask.created.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
 
-    return jsonify({
-        "q": q,
-        "page": pagination.page,
-        "per_page": pagination.per_page,
-        "total": pagination.total,
-        "pages": pagination.pages,
-        "has_next": pagination.has_next,
-        "has_prev": pagination.has_prev,
-        "items": [t.to_dict() for t in pagination.items]
-    }), 200
-
-
-@api_bp.route("/tasks", methods=["POST"])
-def create_task():
-    data = request.get_json(silent=True) or {}
-    content = (data.get("content") or "").strip()
-    if not content:
-        return jsonify({"error": "content is required"}), 400
-
-    completed = int(data.get("completed", 0))
-    task = MyTask(content=content, completed=completed)
-    db.session.add(task)
-    db.session.commit()
-    return jsonify(task.to_dict()), 201
-
-
-@api_bp.route("/tasks/<int:id>", methods=["GET"])
-def get_task(id: int):
-    task = MyTask.query.get_or_404(id)
-    return jsonify(task.to_dict()), 200
-
-
-@api_bp.route("/tasks/<int:id>", methods=["PUT"])
-def update_task(id: int):
-    task = MyTask.query.get_or_404(id)
-    data = request.get_json(silent=True) or {}
-
-    if "content" in data:
-        content = (data["content"] or "").strip()
+        return jsonify({
+            "q": q,
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "total": pagination.total,
+            "pages": pagination.pages,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev,
+            "items": [t.to_dict() for t in pagination.items]
+        }), 200
+    else:
+        data = request.get_json(silent=True) or {}
+        content = (data.get("content") or "").strip()
         if not content:
-            return jsonify({"error": "content cannot be empty"}), 400
-        task.content = content
+            return jsonify({"error": "content is required"}), 400
 
-    if "completed" in data:
-        task.completed = int(data["completed"])
+        completed = int(data.get("completed", 0))
+        task = MyTask(content=content, completed=completed)
+        db.session.add(task)
+        db.session.commit()
+        return jsonify(task.to_dict()), 201
 
-    db.session.commit()
-    return jsonify(task.to_dict()), 200
 
+@api_bp.route("/tasks/<int:id>", methods=["GET", "PUT", "DELETE"])
+def get_update_or_delete_single_task(id: int):
+    if request.method == "GET":
+        task = MyTask.query.get_or_404(id)
+        return jsonify(task.to_dict()), 200
+    elif request.method == "PUT":
+        task = MyTask.query.get_or_404(id)
+        data = request.get_json(silent=True) or {}
 
-@api_bp.route("/tasks/<int:id>", methods=["DELETE"])
-def delete_task(id: int):
-    task = MyTask.query.get_or_404(id)
-    db.session.delete(task)
-    db.session.commit()
-    return "", 204
+        if "content" in data:
+            content = (data["content"] or "").strip()
+            if not content:
+                return jsonify({"error": "content cannot be empty"}), 400
+            task.content = content
 
+        if "completed" in data:
+            task.completed = int(data["completed"])
+
+        db.session.commit()
+        return jsonify(task.to_dict()), 200
+    else:
+        task = MyTask.query.get_or_404(id)
+        db.session.delete(task)
+        db.session.commit()
+        return "", 204
 
 @api_bp.route("/tasks/import-csv", methods=["POST"])
 def api_import_csv():
