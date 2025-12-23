@@ -1,11 +1,14 @@
 from flask import Flask, send_from_directory
 import os
-
+import yaml
+from flasgger import Swagger
 from flask_scss import Scss
-from .extensions import db, swagger
+
+from .extensions import db
 from .routes.ui import ui_bp
 from .routes.api import api_bp
 from .routes.csv_routes import csv_bp
+
 
 def create_app():
     app = Flask(
@@ -16,18 +19,40 @@ def create_app():
 
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SWAGGER"] = {"title": "Task API", "uiversion": 3}
 
     # init extensions
     db.init_app(app)
-    swagger.init_app(app)
-    Scss(app, static_dir='static', asset_dir='static')
+    Scss(app, static_dir="static", asset_dir="static")
+
+    # ---- Load YAML Swagger spec (root/api-spec.yml) ----
+    yaml_path = os.path.join(os.getcwd(), "api-spec.yml")
+    with open(yaml_path, "r") as f:
+        swagger_template = yaml.safe_load(f)
+
+    swagger_config = {
+        "headers": [],
+        "specs": [
+            {
+                "endpoint": "apispec_1",
+                "route": "/apispec_1.json",
+                "rule_filter": lambda rule: True,
+                "model_filter": lambda tag: True,
+            }
+        ],
+        "static_url_path": "/flasgger_static",
+        "swagger_ui": True,
+        "specs_route": "/apidocs/",
+    }
+
+    Swagger(app, config=swagger_config, template=swagger_template)
+    # ---------------------------------------------------
 
     # register blueprints
     app.register_blueprint(ui_bp)
     app.register_blueprint(csv_bp)
     app.register_blueprint(api_bp)
 
+    # create tables
     with app.app_context():
         db.create_all()
 

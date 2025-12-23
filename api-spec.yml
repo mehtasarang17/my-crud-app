@@ -1,0 +1,209 @@
+api-spec: 3.0.3
+info:
+  title: Task API
+  version: "1.0.0"
+
+servers:
+  - url: /api
+
+tags:
+  - name: Tasks
+    description: CRUD + CSV Import/Export
+
+paths:
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks (search + pagination)
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          required: false
+          description: Search query (matches task content)
+        - in: query
+          name: page
+          schema: { type: integer, default: 1, minimum: 1 }
+          required: false
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 5, minimum: 1, maximum: 100 }
+          required: false
+      responses:
+        "200":
+          description: Paginated list of tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedTasks"
+
+    post:
+      tags: [Tasks]
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Invalid payload
+
+  /tasks/{id}:
+    get:
+      tags: [Tasks]
+      summary: Get task by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: One task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+
+    put:
+      tags: [Tasks]
+      summary: Update task by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskRequest"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Invalid payload
+        "404":
+          description: Not found
+
+    delete:
+      tags: [Tasks]
+      summary: Delete task by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /tasks/import-csv:
+    post:
+      tags: [Tasks]
+      summary: Import tasks from CSV
+      description: >
+        Upload a CSV file. Supports header columns `content,completed`
+        OR single-column rows with task content.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Import summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportSummary"
+        "400":
+          description: Bad request
+        "500":
+          description: DB insert failed
+
+  /tasks/export-csv:
+    get:
+      tags: [Tasks]
+      summary: Export tasks to CSV
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          required: false
+          description: Optional search filter before exporting
+      responses:
+        "200":
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        content: { type: string, example: "Buy groceries" }
+        completed: { type: integer, example: 0 }
+        created: { type: string, example: "2025-12-23T10:30:00" }
+
+    CreateTaskRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, example: "Read system design notes" }
+        completed: { type: integer, default: 0, example: 0 }
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        content: { type: string, example: "Updated task text" }
+        completed: { type: integer, example: 1 }
+
+    PaginatedTasks:
+      type: object
+      properties:
+        q: { type: string, example: "groceries" }
+        page: { type: integer, example: 1 }
+        per_page: { type: integer, example: 5 }
+        total: { type: integer, example: 100 }
+        pages: { type: integer, example: 20 }
+        has_next: { type: boolean, example: true }
+        has_prev: { type: boolean, example: false }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+
+    ImportSummary:
+      type: object
+      properties:
+        inserted: { type: integer, example: 10 }
+        skipped: { type: integer, example: 2 }
+        errors: { type: integer, example: 0 }
