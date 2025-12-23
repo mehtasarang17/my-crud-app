@@ -1,35 +1,100 @@
 {% extends 'base.html' %}
 
-{% block head %}<title>Task Smah</title> {% endblock %}
+{% block head %}<title>Task Smash</title>{% endblock %}
 
 {% block body %}
-    <div class="content">
-        <h1>Task Smash 2.0</h1>
-        {% if not tasks %}
-        <h3> No new tasks.....Add tasks!</h3>
-        {% else %}
-    <table>
-        <tr>
-            <th>Task</th>
-            <th>Added</th>
-            <th>Action</th>
-        </tr>
-        {% for task in tasks %}
-        <tr>
-            <td>{{task.content}}</td>
-            <td>{{task.created.strftime("%Y-%m-%d")}}</td>
-            <td>
-                <a href="/delete/{{task.id}}">Delete</a>
-            <br/>
-                <a href="/update/{{task.id}}">Edit</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+<div class="content">
+    <h1>Task Smash 2.0</h1>
+
+    <!-- Search + Per page (GET) -->
+    <form method="GET" action="/" 
+      style="margin: 12px 0; display:flex; gap:10px; align-items:center; justify-content:center;">
+
+        <input type="text" name="q" placeholder="Search tasks..." value="{{ q }}" />
+
+        <button type="submit">Search</button>
+
+        <label for="per_page">Per page:</label>
+        <select name="per_page" id="per_page" onchange="this.form.submit()">
+            <option value="5"  {% if per_page == 5 %}selected{% endif %}>5</option>
+            <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+            <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+        </select>
+
+        <input type="hidden" name="page" value="1">
+        <a href="/" style="margin-left: 8px;">Clear</a>
+    </form>
+
+    <hr style="margin: 20px 0;" />
+
+    <!-- CSV import (POST) -->
+    <h3>Import Tasks from CSV</h3>
+    <form action="/import-csv" method="POST" enctype="multipart/form-data" style="margin-bottom: 16px;">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">Upload CSV</button>
+    </form>
+
+    {% if request.args.get('imported') %}
+    <p style="margin-top:10px;">
+        Imported: {{ request.args.get('imported') }},
+        Skipped: {{ request.args.get('skipped') }},
+        Errors: {{ request.args.get('errors') }}
+    </p>
     {% endif %}
-    <form action="/" method="POST">
-        <input type="text" name="content" id="content">
+
+    <a href="/export-csv">
+        <button type="button">Download CSV</button>
+    </a>
+
+
+    <hr style="margin: 20px 0;" />
+
+    <!-- Manual add task (POST) -->
+    <form action="/" method="POST" style="margin-bottom: 16px;">
+        <input type="text" name="content" id="content" placeholder="Enter a new task..." required>
         <input type="submit" value="Add Task" id="btn_add">
     </form>
-    </div>
+
+    <!-- Tasks table -->
+    {% if not tasks %}
+        <h3>No new tasks.....Add tasks!</h3>
+    {% else %}
+        <table>
+            <tr>
+                <th>Task</th>
+                <th>Added</th>
+                <th>Action</th>
+            </tr>
+
+            {% for task in tasks %}
+            <tr>
+                <td>{{ task.content }}</td>
+                <td>{{ task.created.strftime("%Y-%m-%d") }}</td>
+                <td>
+                    <a href="/delete/{{ task.id }}">Delete</a>
+                    <br/>
+                    <a href="/update/{{ task.id }}">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination" style="margin-top: 16px;">
+            {% if pagination.has_prev %}
+                <a href="/?page={{ pagination.prev_num }}&per_page={{ per_page }}&q={{ q|urlencode }}">⬅ Prev</a>
+            {% endif %}
+
+            <span style="margin: 0 10px;">
+                Page {{ pagination.page }} of {{ pagination.pages }}
+                {% if q %} (filtered) {% endif %}
+            </span>
+
+            {% if pagination.has_next %}
+                <a href="/?page={{ pagination.next_num }}&per_page={{ per_page }}&q={{ q|urlencode }}">Next ➡</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
 {% endblock %}
