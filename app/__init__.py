@@ -8,6 +8,7 @@ from .extensions import db
 from .routes.ui import ui_bp
 from .routes.api import api_bp
 from .routes.csv_routes import csv_bp
+from pathlib import Path
 
 
 def create_app():
@@ -16,8 +17,12 @@ def create_app():
         template_folder="../templates",
         static_folder="../static"
     )
+    app.instance_path = str(Path(app.root_path).parent / "instance")
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+    Path(app.instance_path).mkdir(parents=True, exist_ok=True)
+
+    db_path = Path(app.instance_path) / "database.db"
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # init extensions

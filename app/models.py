@@ -13,6 +13,13 @@ class Project(db.Model):
         cascade="all, delete-orphan",
         lazy=True
     )
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "created": self.created.isoformat() if self.created else None
+        }
 
 class MyTask(db.Model):
     __tablename__ = "tasks"
