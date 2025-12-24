@@ -12,6 +12,7 @@ def list_tasks():
     q = request.args.get("q", default="", type=str).strip()
     page = request.args.get("page", default=1, type=int)
     per_page = request.args.get("per_page", default=5, type=int)
+    sort = request.args.get("sort", "desc")
 
     if page < 1:
         page = 1
@@ -21,12 +22,21 @@ def list_tasks():
         per_page = 100
 
     query = apply_task_search(MyTask.query, q)
-    pagination = query.order_by(MyTask.created.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
+
+    if sort == "asc":
+        query = query.order_by(MyTask.created.asc())
+    else:
+        query = query.order_by(MyTask.created.desc())
+
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
     )
 
     return jsonify({
         "q": q,
+        "sort": sort,
         "page": pagination.page,
         "per_page": pagination.per_page,
         "total": pagination.total,
@@ -35,6 +45,7 @@ def list_tasks():
         "has_prev": pagination.has_prev,
         "items": [t.to_dict() for t in pagination.items]
     }), 200
+
 
 
 @api_bp.route("/tasks", methods=["POST"])

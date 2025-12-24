@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect
+from sqlalchemy import or_
 from ..extensions import db
 from ..models import MyTask
 from ..services.search import apply_task_search
@@ -8,24 +9,38 @@ ui_bp = Blueprint("ui", __name__)
 @ui_bp.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        current_task = request.form["content"]
-        task = MyTask(content=current_task)
-        db.session.add(task)
-        db.session.commit()
+        content = request.form["content"].strip()
+        if content:
+            db.session.add(MyTask(content=content))
+            db.session.commit()
         return redirect("/")
 
-    page = request.args.get("page", default=1, type=int)
-    per_page = request.args.get("per_page", default=5, type=int)
-    q = request.args.get("q", default="", type=str).strip()
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
+    q = request.args.get("q", "", type=str).strip()
+    sort = request.args.get("sort", "desc")
 
     if per_page < 1:
         per_page = 5
     if per_page > 100:
         per_page = 100
 
-    query = apply_task_search(MyTask.query, q)
-    pagination = query.order_by(MyTask.created.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
+    query = MyTask.query
+
+    if q:
+        words = [w for w in q.split() if w]
+        conditions = [MyTask.content.ilike(f"%{w}%") for w in words]
+        query = query.filter(or_(*conditions))
+
+    if sort == "asc":
+        query = query.order_by(MyTask.created.asc())
+    else:
+        query = query.order_by(MyTask.created.desc())
+
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
     )
 
     return render_template(
@@ -33,8 +48,10 @@ def index():
         tasks=pagination.items,
         pagination=pagination,
         per_page=per_page,
-        q=q
+        q=q,
+        sort=sort
     )
+
 
 
 @ui_bp.route("/delete/<int:id>")

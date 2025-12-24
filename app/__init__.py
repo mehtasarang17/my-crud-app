@@ -25,25 +25,24 @@ def create_app():
     Scss(app, static_dir="static", asset_dir="static")
 
     # ---- Load YAML Swagger spec (root/api-spec.yml) ----
-    yaml_path = os.path.join(os.getcwd(), "api-spec.yml")
+    yaml_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "api-spec.yml"))
     with open(yaml_path, "r") as f:
         swagger_template = yaml.safe_load(f)
 
     swagger_config = {
-        "headers": [],
-        "specs": [
-            {
-                "endpoint": "apispec_1",
-                "route": "/apispec_1.json",
-                "rule_filter": lambda rule: True,
-                "model_filter": lambda tag: True,
-            }
-        ],
-        "static_url_path": "/flasgger_static",
-        "swagger_ui": True,
-        "specs_route": "/apidocs/",
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": "apispec_1",
+            "route": "/apispec_1.json",
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/",
     }
-
     Swagger(app, config=swagger_config, template=swagger_template)
 
     # register blueprints

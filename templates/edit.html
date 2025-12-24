@@ -7,27 +7,20 @@
 {% block body %}
 <div class="page">
   <div class="card">
-    <h1 class="title">Edit Task</h1>
-    <p class="subtitle">Update your task and save changes</p>
-
-    <form action="/update/{{ update_task.id }}" method="POST" class="add-row">
+    <form action="/update/{{ update_task.id }}" method="POST">
       <input
         class="input"
         type="text"
         name="content"
         id="content"
-        placeholder="Add a task"
+        value="{{ update_task.content }}"
         required
         autofocus
       />
 
-      <button type="submit" class="btn btn-primary">
+      <button type="submit" class="btn btn-primary" style="margin-top: 12px;">
         Update Task
       </button>
-
-      <a href="/" class="btn btn-ghost">
-        Cancel
-      </a>
     </form>
   </div>
 </div>
