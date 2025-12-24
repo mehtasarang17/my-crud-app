@@ -225,4 +225,17 @@ body {
     background: rgba(124, 170, 255, 0.18);
     border: 1px solid rgba(124, 170, 255, 0.35);
   }
+
+.rename-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
+
+.rename-input {
+  min-width: 220px;
+  font-weight: 600;
+}
+
+}
+

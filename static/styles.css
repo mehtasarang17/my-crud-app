@@ -215,6 +215,18 @@ body {
   color: rgba(233, 238, 252, 0.9);
   font-size: 13px;
 }
+
+.project-link {
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+  display: block;
+}
+
+.project-link:hover {
+  opacity: 0.9;
+}
+
 .pager .pill {
   margin-left: 8px;
   padding: 3px 8px;

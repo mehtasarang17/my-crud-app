@@ -1,17 +1,22 @@
 {% extends 'base.html' %}
 
-{% block head %}
-<title>Task Smash</title>
-{% endblock %}
+{% block head %}<title>Task Smash</title>{% endblock %}
 
 {% block body %}
 <div class="page">
   <div class="card">
-    <h1 class="title">Task Smash 2.0</h1>
-    <p class="subtitle">Search • Pagination • CSV Import/Export • API Ready</p>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+      <div>
+        <h1 class="title">Task Smash 2.0</h1>
+        <p class="subtitle">Search • Pagination • CSV Import/Export • API Ready</p>
+      </div>
 
-    <!-- Toolbar: Search + Sort + Per Page -->
-    <form method="GET" action="/" class="toolbar">
+      <!-- Back to dashboard -->
+      <a class="btn btn-ghost" href="/dashboard">← Projects</a>
+    </div>
+
+    <!-- Search + Per page + Sort (GET) -->
+    <form method="GET" action="/projects/{{ project_id }}" class="toolbar">
       <div class="toolbar-left">
         <input
           class="input"
@@ -20,27 +25,11 @@
           placeholder="Search tasks..."
           value="{{ q }}"
         />
-
-        <button class="btn btn-primary" type="submit">
-          Search
-        </button>
-
-        <a class="btn btn-ghost" href="/">
-          Clear
-        </a>
+        <button class="btn btn-primary" type="submit">Search</button>
+        <a class="btn btn-ghost" href="/projects/{{ project_id }}">Clear</a>
       </div>
 
       <div class="toolbar-right">
-        <label class="label" for="sort">Sort</label>
-        <select class="select" name="sort" id="sort" onchange="this.form.submit()">
-          <option value="desc" {% if sort != 'asc' %}selected{% endif %}>
-            Newest first
-          </option>
-          <option value="asc" {% if sort == 'asc' %}selected{% endif %}>
-            First added
-          </option>
-        </select>
-
         <label class="label" for="per_page">Per page</label>
         <select class="select" name="per_page" id="per_page" onchange="this.form.submit()">
           <option value="5"  {% if per_page == 5 %}selected{% endif %}>5</option>
@@ -49,40 +38,41 @@
           <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
         </select>
 
-        <!-- Always reset page when filters change -->
-        <input type="hidden" name="page" value="1">
+        <label class="label" for="sort">Sort</label>
+        <select class="select" name="sort" id="sort" onchange="this.form.submit()">
+          <option value="desc" {% if sort != 'asc' %}selected{% endif %}>Newest first</option>
+          <option value="asc" {% if sort == 'asc' %}selected{% endif %}>First added</option>
+        </select>
+
+        <!-- Always reset page back to 1 when changing filters -->
+        <input type="hidden" name="page" value="1" />
       </div>
     </form>
 
-    <!-- Add Task -->
-    <form action="/" method="POST" class="add-row">
-      <input
-        class="input"
-        type="text"
-        name="content"
-        placeholder="Add a new task..."
-        required
-      />
-      <button class="btn btn-primary" type="submit">
-        Add Task
-      </button>
+    <!-- Add task (POST) -->
+    <form action="/projects/{{ project_id }}" method="POST" class="add-row">
+      <input class="input" type="text" name="content" id="content" placeholder="Add a new task..." required>
+      <button class="btn btn-primary" type="submit">Add Task</button>
     </form>
 
-    <!-- CSV Actions -->
+    <!-- CSV actions -->
     <div class="csv-row">
+      <!-- Import CSV (POST) -->
       <form
-        action="/import-csv"
+        action="/projects/{{ project_id }}/import-csv"
         method="POST"
         enctype="multipart/form-data"
         class="csv-form"
       >
-        <input class="file" type="file" name="file" accept=".csv" required />
-        <button class="btn btn-secondary" type="submit">
-          Import CSV
-        </button>
+        <input class="file" type="file" name="file" accept=".csv" required>
+        <button class="btn btn-secondary" type="submit">Import CSV</button>
       </form>
 
-      <a class="btn btn-secondary" href="/export-csv">
+      <!-- Export CSV (GET) -->
+      <a
+        class="btn btn-secondary"
+        href="/projects/{{ project_id }}/export-csv?q={{ q|urlencode }}"
+      >
         Export CSV
       </a>
     </div>
@@ -95,31 +85,24 @@
       </div>
     {% endif %}
 
-    <!-- Task List -->
+    <!-- Tasks -->
     {% if not tasks %}
-      <div class="empty">
-        No tasks yet — add one above 👆
-      </div>
+      <div class="empty">No tasks yet — add one above 👆</div>
     {% else %}
       <div class="list">
         {% for task in tasks %}
           <div class="todo">
             <div class="todo-main">
-              <div class="todo-text">
-                {{ task.content }}
-              </div>
+              <div class="todo-text">{{ task.content }}</div>
               <div class="todo-meta">
-                Created on {{ task.created.strftime("%d %b %Y") }}
+                Created on: {{ task.created.strftime("%d %b %Y") }}
               </div>
             </div>
 
             <div class="todo-actions">
-              <a class="btn btn-ghost" href="/update/{{ task.id }}">
-                Edit
-              </a>
-              <a class="btn btn-danger" href="/delete/{{ task.id }}">
-                Delete
-              </a>
+              <!-- These routes must exist in backend -->
+              <a class="btn btn-danger" href="/projects/{{ project_id }}/delete/{{ task.id }}">Delete</a>
+              <a class="btn btn-ghost" href="/projects/{{ project_id }}/update/{{ task.id }}">Edit</a>
             </div>
           </div>
         {% endfor %}
@@ -130,7 +113,7 @@
         {% if pagination.has_prev %}
           <a
             class="btn btn-ghost"
-            href="/?page={{ pagination.prev_num }}&per_page={{ per_page }}&q={{ q|urlencode }}&sort={{ sort }}"
+            href="/projects/{{ project_id }}?page={{ pagination.prev_num }}&per_page={{ per_page }}&q={{ q|urlencode }}&sort={{ sort }}"
           >
             ⬅ Prev
           </a>
@@ -140,15 +123,13 @@
 
         <div class="pager-mid">
           Page <b>{{ pagination.page }}</b> of <b>{{ pagination.pages }}</b>
-          {% if q %}
-            <span class="pill">filtered</span>
-          {% endif %}
+          {% if q %}<span class="pill">filtered</span>{% endif %}
         </div>
 
         {% if pagination.has_next %}
           <a
             class="btn btn-ghost"
-            href="/?page={{ pagination.next_num }}&per_page={{ per_page }}&q={{ q|urlencode }}&sort={{ sort }}"
+            href="/projects/{{ project_id }}?page={{ pagination.next_num }}&per_page={{ per_page }}&q={{ q|urlencode }}&sort={{ sort }}"
           >
             Next ➡
           </a>

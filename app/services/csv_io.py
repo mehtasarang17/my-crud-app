@@ -3,9 +3,11 @@ import io
 from datetime import datetime
 from ..models import MyTask
 
-def parse_tasks_csv(file_storage):
+
+def parse_tasks_csv(file_storage, project_id: int):
     """
-    Accepts Werkzeug FileStorage, returns (tasks_to_insert, inserted_count, skipped, errors)
+    Accepts Werkzeug FileStorage + project_id
+    Returns (tasks_to_insert, inserted_count, skipped, errors)
     """
     stream = io.StringIO(file_storage.stream.read().decode("utf-8-sig"), newline=None)
     reader = csv.reader(stream)
@@ -33,7 +35,10 @@ def parse_tasks_csv(file_storage):
 
                 completed_raw = (r.get("completed") or "0").strip().lower()
                 completed = 1 if completed_raw in ("1", "true", "yes", "y") else 0
-                tasks_to_insert.append(MyTask(content=content, completed=completed))
+
+                tasks_to_insert.append(
+                    MyTask(content=content, completed=completed, project_id=project_id)
+                )
             except Exception:
                 errors += 1
     else:
@@ -42,11 +47,13 @@ def parse_tasks_csv(file_storage):
                 if not r:
                     skipped += 1
                     continue
+
                 content = (r[0] or "").strip()
                 if not content:
                     skipped += 1
                     continue
-                tasks_to_insert.append(MyTask(content=content))
+
+                tasks_to_insert.append(MyTask(content=content, project_id=project_id))
             except Exception:
                 errors += 1
 

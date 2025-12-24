@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block head %}<title>Projects · Task Smash</title>{% endblock %}
+
+{% block body %}
+<div class="page">
+    <div class="card">
+        <h1 class="title">Projects</h1>
+        <p class="subtitle">Create, rename, delete projects — click one to manage tasks.</p>
+
+        <!-- Create project -->
+        <form method="POST" action="/dashboard" class="add-row" style="margin-bottom:16px;">
+            <input class="input" type="text" name="name" placeholder="New project name..." required>
+            <button class="btn btn-primary" type="submit">Add Project</button>
+        </form>
+
+        {% if not projects %}
+        <div class="empty">No projects yet — create one above 👆</div>
+        {% else %}
+        <div class="list">
+            {% for p in projects %}
+            <div class="todo" style="align-items:center;">
+                <div class="todo-main">
+                    <a href="/projects/{{ p.id }}" class="project-link">
+                        <div class="todo-text">
+                            {{ p.name }}
+                        </div>
+                    </a>
+
+                    <div class="todo-meta">
+                        Created on: {{ p.created.strftime("%d %b %Y") }}
+                    </div>
+                </div>
+
+                <div class="todo-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <!-- Rename -->
+                    <form method="POST" action="/projects/{{ p.id }}/rename" class="rename-form">
+                        <input class="input rename-input" type="text" name="name" placeholder="Click to edit..."
+                            data-current-name="{{ p.name }}" required />
+
+                        <button class="btn btn-ghost" type="submit">Save</button>
+                    </form>
+
+
+
+                    <!-- Delete -->
+                    <form method="POST" action="/projects/{{ p.id }}/delete"
+                        onsubmit="return confirm('Delete project & all its tasks?');">
+                        <button class="btn btn-danger" type="submit">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+<script>
+  document.querySelectorAll(".rename-input").forEach(input => {
+    let initialized = false;
+
+    input.addEventListener("focus", () => {
+      if (!initialized) {
+        input.value = input.dataset.currentName;
+        initialized = true;
+      }
+    });
+  });
+</script>
+
+{% endblock %}
