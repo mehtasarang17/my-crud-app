@@ -8,28 +8,125 @@ schemes:
   - http
 
 tags:
+  - name: Projects
+    description: Project CRUD
   - name: Tasks
-    description: CRUD + CSV Import/Export
+    description: Task CRUD per project + CSV Import/Export
 
 paths:
-  /tasks:
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List all projects
+      produces: [application/json]
+      responses:
+        200:
+          description: List of projects
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Project"
+
+    post:
+      tags: [Projects]
+      summary: Create a project
+      consumes: [application/json]
+      produces: [application/json]
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/CreateProjectRequest"
+      responses:
+        201:
+          description: Project created
+          schema:
+            $ref: "#/definitions/Project"
+        400:
+          description: Invalid payload
+
+  /projects/{project_id}:
+    get:
+      tags: [Projects]
+      summary: Get project by id
+      produces: [application/json]
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          type: integer
+      responses:
+        200:
+          description: One project
+          schema:
+            $ref: "#/definitions/Project"
+        404:
+          description: Not found
+
+    put:
+      tags: [Projects]
+      summary: Rename/update project by id
+      consumes: [application/json]
+      produces: [application/json]
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          type: integer
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateProjectRequest"
+      responses:
+        200:
+          description: Updated project
+          schema:
+            $ref: "#/definitions/Project"
+        400:
+          description: Invalid payload
+        404:
+          description: Not found
+
+    delete:
+      tags: [Projects]
+      summary: Delete project by id (deletes tasks too if cascade)
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          type: integer
+      responses:
+        204:
+          description: Deleted
+        404:
+          description: Not found
+
+  /projects/{project_id}/tasks:
     get:
       tags: [Tasks]
-      summary: List tasks (search + pagination)
-      produces:
-        - application/json
+      summary: List tasks for a project (search + pagination + sort)
+      produces: [application/json]
       parameters:
+        - in: path
+          name: project_id
+          required: true
+          type: integer
+
         - in: query
           name: q
           type: string
           required: false
-          description: Search query (matches task content)
+          description: Search query (matches task content; supports multi-word)
+
         - in: query
           name: page
           type: integer
           required: false
           default: 1
           minimum: 1
+
         - in: query
           name: per_page
           type: integer
@@ -37,32 +134,38 @@ paths:
           default: 5
           minimum: 1
           maximum: 100
+
         - in: query
           name: sort
           type: string
           required: false
           enum: [asc, desc]
           default: desc
-          description: Sort by created time (asc = first added, desc = newest first)
+          description: Sort by created time (asc=first added, desc=newest first)
+
       responses:
         200:
-          description: Paginated list of tasks
+          description: Paginated list of tasks for the project
           schema:
-            $ref: "#/definitions/PaginatedTasks"
+            $ref: "#/definitions/PaginatedProjectTasks"
 
     post:
       tags: [Tasks]
-      summary: Create a task
-      consumes:
-        - application/json
-      produces:
-        - application/json
+      summary: Create a task in a project
+      consumes: [application/json]
+      produces: [application/json]
       parameters:
+        - in: path
+          name: project_id
+          required: true
+          type: integer
+
         - in: body
           name: body
           required: true
           schema:
             $ref: "#/definitions/CreateTaskRequest"
+
       responses:
         201:
           description: Task created
@@ -70,16 +173,21 @@ paths:
             $ref: "#/definitions/Task"
         400:
           description: Invalid payload
+        404:
+          description: Project not found
 
-  /tasks/{id}:
+  /projects/{project_id}/tasks/{task_id}:
     get:
       tags: [Tasks]
-      summary: Get task by id
-      produces:
-        - application/json
+      summary: Get a task by id (project-scoped)
+      produces: [application/json]
       parameters:
         - in: path
-          name: id
+          name: project_id
+          required: true
+          type: integer
+        - in: path
+          name: task_id
           required: true
           type: integer
       responses:
@@ -92,14 +200,16 @@ paths:
 
     put:
       tags: [Tasks]
-      summary: Update task by id
-      consumes:
-        - application/json
-      produces:
-        - application/json
+      summary: Update a task by id (project-scoped)
+      consumes: [application/json]
+      produces: [application/json]
       parameters:
         - in: path
-          name: id
+          name: project_id
+          required: true
+          type: integer
+        - in: path
+          name: task_id
           required: true
           type: integer
         - in: body
@@ -119,10 +229,14 @@ paths:
 
     delete:
       tags: [Tasks]
-      summary: Delete task by id
+      summary: Delete a task by id (project-scoped)
       parameters:
         - in: path
-          name: id
+          name: project_id
+          required: true
+          type: integer
+        - in: path
+          name: task_id
           required: true
           type: integer
       responses:
@@ -131,20 +245,24 @@ paths:
         404:
           description: Not found
 
-  /tasks/import-csv:
+  /projects/{project_id}/tasks/import-csv:
     post:
       tags: [Tasks]
-      summary: Import tasks from CSV
-      consumes:
-        - multipart/form-data
-      produces:
-        - application/json
+      summary: Import tasks from CSV into a project
+      consumes: [multipart/form-data]
+      produces: [application/json]
       parameters:
+        - in: path
+          name: project_id
+          required: true
+          type: integer
+
         - in: formData
           name: file
           type: file
           required: true
-          description: CSV file. Supports header content,completed OR single-column rows.
+          description: "CSV file (header: content,completed OR single-column rows)"
+
       responses:
         200:
           description: Import summary
@@ -152,21 +270,52 @@ paths:
             $ref: "#/definitions/ImportSummary"
         400:
           description: Bad request
+        404:
+          description: Project not found
         500:
           description: DB insert failed
 
-  /tasks/export-csv:
+  /projects/{project_id}/tasks/export-csv:
     get:
       tags: [Tasks]
-      summary: Export tasks to CSV
-      produces:
-        - text/csv
+      summary: Export tasks of a project to CSV
+      produces: [text/csv]
       parameters:
+        - in: path
+          name: project_id
+          required: true
+          type: integer
+
         - in: query
           name: q
           type: string
           required: false
           description: Optional search filter before exporting
+
+        - in: query
+          name: page
+          type: integer
+          required: false
+          default: 1
+          minimum: 1
+          description: Optional - export only one page (if your backend supports this)
+
+        - in: query
+          name: per_page
+          type: integer
+          required: false
+          default: 5
+          minimum: 1
+          maximum: 100
+          description: Optional - export only one page (if your backend supports this)
+
+        - in: query
+          name: sort
+          type: string
+          required: false
+          enum: [asc, desc]
+          default: desc
+
       responses:
         200:
           description: CSV file download
@@ -174,12 +323,41 @@ paths:
             type: string
 
 definitions:
-  Task:
+  Project:
     type: object
     properties:
       id:
         type: integer
         example: 1
+      name:
+        type: string
+        example: "My Project"
+      created:
+        type: string
+        example: "2025-12-23T10:30:00"
+
+  CreateProjectRequest:
+    type: object
+    required: [name]
+    properties:
+      name:
+        type: string
+        example: "New Project"
+
+  UpdateProjectRequest:
+    type: object
+    required: [name]
+    properties:
+      name:
+        type: string
+        example: "Renamed Project"
+
+  Task:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 10
       content:
         type: string
         example: "Buy groceries"
@@ -189,6 +367,9 @@ definitions:
       created:
         type: string
         example: "2025-12-23T10:30:00"
+      project_id:
+        type: integer
+        example: 1
 
   CreateTaskRequest:
     type: object
@@ -212,9 +393,12 @@ definitions:
         type: integer
         example: 1
 
-  PaginatedTasks:
+  PaginatedProjectTasks:
     type: object
     properties:
+      project_id:
+        type: integer
+        example: 1
       q:
         type: string
         example: "groceries"
